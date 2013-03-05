@@ -28,6 +28,7 @@ import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.file.impl.PathAdjuster;
 import org.vertx.java.core.impl.Context;
 import org.vertx.java.core.impl.VertxInternal;
+import org.vertx.java.core.impl.management.JMX;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 import org.vertx.java.core.net.NetSocket;
@@ -35,6 +36,7 @@ import org.vertx.java.core.net.NetSocket;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DefaultNetSocket extends NetSocket {
 
@@ -46,14 +48,19 @@ public class DefaultNetSocket extends NetSocket {
   private Handler<Void> drainHandler;
   private Handler<Message<Buffer>> writeHandler;
 
+  protected AtomicLong sent = new AtomicLong(0L);
+  protected AtomicLong received = new AtomicLong(0L);
+
   public DefaultNetSocket(VertxInternal vertx, Channel channel, Context context) {
-    super(vertx, channel, UUID.randomUUID().toString(), context);
+    super(vertx, channel, String.format("net-%s", UUID.randomUUID().toString()), context);
     writeHandler = new Handler<Message<Buffer>>() {
       public void handle(Message<Buffer> msg) {
         writeBuffer(msg.body);
       }
     };
     vertx.eventBus().registerLocalHandler(writeHandlerID, writeHandler);
+
+    JMX.CORE.registerNetSocket(this);
   }
 
   public void writeBuffer(Buffer data) {
@@ -149,6 +156,7 @@ public class DefaultNetSocket extends NetSocket {
       setContext();
       try {
         dataHandler.handle(data);
+        received.addAndGet(data.length());
       } catch (Throwable t) {
         handleHandlerException(t);
       }
@@ -158,9 +166,11 @@ public class DefaultNetSocket extends NetSocket {
   //Close without checking thread - used when server is closed
   void internalClose() {
     channel.close();
+    JMX.CORE.unregisterNetSocket(this);
   }
 
   private ChannelFuture doWrite(ChannelBuffer buff) {
+    sent.addAndGet(buff.writableBytes());
     return channel.write(buff);
   }
 
@@ -175,5 +185,14 @@ public class DefaultNetSocket extends NetSocket {
       }
     }
   }
+
+  public final long getReceivedCount() {
+    return received.get();
+  }
+
+  public final long getSentCount() {
+    return sent.get();
+  }
+
 }
 

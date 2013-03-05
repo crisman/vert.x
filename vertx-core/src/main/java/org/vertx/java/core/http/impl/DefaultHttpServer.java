@@ -43,6 +43,7 @@ import org.vertx.java.core.http.impl.ws.hybi17.HandshakeRFC6455;
 import org.vertx.java.core.impl.Context;
 import org.vertx.java.core.impl.EventLoopContext;
 import org.vertx.java.core.impl.VertxInternal;
+import org.vertx.java.core.impl.management.JMX;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 import org.vertx.java.core.net.impl.*;
@@ -55,6 +56,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONNECTION;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Values.WEBSOCKET;
@@ -85,6 +87,7 @@ public class DefaultHttpServer implements HttpServer {
   private VertxWorkerPool availableWorkers = new VertxWorkerPool();
   private HandlerManager<HttpServerRequest> reqHandlerManager = new HandlerManager<>(availableWorkers);
   private HandlerManager<ServerWebSocket> wsHandlerManager = new HandlerManager<>(availableWorkers);
+  private AtomicLong received = new AtomicLong(0L);
 
   public DefaultHttpServer(VertxInternal vertx) {
     this.vertx = vertx;
@@ -204,6 +207,7 @@ public class DefaultHttpServer implements HttpServer {
           log.error("Failed to bind", e);
         }
         vertx.sharedHttpServers().put(id, this);
+        JMX.CORE.registerHttpServer(id, received);
         actualServer = this;
       } else {
         // Server already exists with that host/port - we will use that
@@ -414,6 +418,7 @@ public class DefaultHttpServer implements HttpServer {
     } catch (InterruptedException e) {
     }
 
+    JMX.CORE.unregisterHttpServer(this.id);
     executeCloseDone(closeContext, done);
   }
 
@@ -563,6 +568,7 @@ public class DefaultHttpServer implements HttpServer {
           } else {
             conn.handleMessage(msg);
           }
+          received.incrementAndGet();
         }
       } else if (msg instanceof WebSocketFrame) {
         //Websocket frame

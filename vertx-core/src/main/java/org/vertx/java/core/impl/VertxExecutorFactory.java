@@ -18,7 +18,7 @@ package org.vertx.java.core.impl;
 import org.jboss.netty.channel.socket.nio.NioClientBossPool;
 import org.jboss.netty.channel.socket.nio.NioServerBossPool;
 import org.jboss.netty.channel.socket.nio.NioWorkerPool;
-import org.vertx.java.core.impl.management.ManagementRegistry;
+import org.vertx.java.core.impl.management.JMX;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,7 +44,7 @@ public class VertxExecutorFactory {
   public static NioWorkerPool corePool(String poolName) {
     int corePoolSize = Integer.getInteger("vertx.pool.core.size", Runtime.getRuntime().availableProcessors());
     ExecutorService exec = Executors.newFixedThreadPool(corePoolSize, new VertxThreadFactory(poolName));
-    ManagementRegistry.registerThreadPool("Core", exec);
+    JMX.CORE.registerThreadPool("Core", exec);
     return new NioWorkerPool(exec, corePoolSize);
   }
 
@@ -53,7 +53,7 @@ public class VertxExecutorFactory {
   public static ExecutorService workerPool(String poolName) {
     int maxSize = Integer.getInteger("vertx.pool.worker.size", WORKER_POOL_MAX_SIZE);
     ExecutorService exec = Executors.newFixedThreadPool(maxSize, new VertxThreadFactory(poolName));
-    ManagementRegistry.registerThreadPool("Worker", exec);
+    JMX.CORE.registerThreadPool("Worker", exec);
     return exec;
   }
 
@@ -62,14 +62,14 @@ public class VertxExecutorFactory {
   public static NioServerBossPool serverAcceptorPool(String poolName) {
     int acceptorPoolSize = Integer.getInteger("vertx.pool.acceptor.size", ACCEPTOR_POOL_MAX_SIZE);
     ExecutorService exec = Executors.newFixedThreadPool(acceptorPoolSize, new VertxThreadFactory(poolName));
-    ManagementRegistry.registerThreadPool("ServerAcceptor", exec);
+    JMX.CORE.registerThreadPool("ServerAcceptor", exec);
     return new NioServerBossPool(exec, acceptorPoolSize);
   }
 
   public static NioClientBossPool clientAcceptorPool(VertxInternal vertx, String poolName) {
     int acceptorPoolSize = Integer.getInteger("vertx.pool.acceptor.size", ACCEPTOR_POOL_MAX_SIZE);
     ExecutorService exec = Executors.newFixedThreadPool(acceptorPoolSize, new VertxThreadFactory(poolName));
-    ManagementRegistry.registerThreadPool("ClientAcceptor", exec);
+    JMX.CORE.registerThreadPool("ClientAcceptor", exec);
     return new NioClientBossPool(exec, acceptorPoolSize, vertx.getTimer(), null);
   }
 

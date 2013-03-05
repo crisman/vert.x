@@ -34,6 +34,7 @@ import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.impl.Context;
 import org.vertx.java.core.impl.EventLoopContext;
 import org.vertx.java.core.impl.VertxInternal;
+import org.vertx.java.core.impl.management.JMX;
 import org.vertx.java.core.logging.Logger;
 import org.vertx.java.core.logging.impl.LoggerFactory;
 import org.vertx.java.core.net.NetServer;
@@ -172,6 +173,8 @@ public class DefaultNetServer implements NetServer {
       // Share the event loop thread to also serve the NetServer's network traffic.
       actualServer.handlerManager.addHandler(connectHandler, eventLoopContext);
     }
+
+    JMX.CORE.registerNetServer(this.id);
     return this;
   }
 
@@ -235,6 +238,8 @@ public class DefaultNetServer implements NetServer {
       latch.await(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
     }
+
+    JMX.CORE.unregisterNetServer(this.id);
 
     executeCloseDone(closeContext, done);
   }
